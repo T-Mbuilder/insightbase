@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Insightbase — AI Knowledge Base Q&amp;A</title>
+<style>
+:root{--bg:#070a12;--panel:#111826;--line:rgba(148,163,184,.18);--text:#e8ecf4;--muted:#a2adc2;--accent:#4f8cff;--accent2:#22d3aa;--danger:#f2566d}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Inter","Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(900px 420px at 80% -10%,rgba(79,140,255,.16),transparent),var(--bg);color:var(--text);line-height:1.6;height:100vh;overflow:hidden}
+.app{display:grid;grid-template-columns:290px 1fr;height:100vh}
+@media(max-width:760px){.app{grid-template-columns:1fr}.side{display:none}}
+.side{background:var(--panel);border-right:1px solid var(--line);padding:18px 14px;overflow:auto}
+.side h1{font-size:18px;margin:0 0 2px}
+.side .sub{font-size:11px;color:var(--muted);margin:0 0 14px}
+.side h2{font-size:11px;letter-spacing:.14em;color:var(--accent2);text-transform:uppercase;margin:16px 0 6px}
+.doc-item{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:12px;color:var(--muted);cursor:pointer}
+.doc-item.active{border-color:var(--accent);color:var(--text)}
+.doc-item small{color:var(--dim);display:block;margin-top:2px}
+textarea{width:100%;min-height:90px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:8px;font-size:12px;font-family:inherit;resize:vertical}
+button{background:linear-gradient(120deg,#3b7bf5,#5a9bff);border:none;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+button:hover{filter:brightness(1.08)}
+.main{display:flex;flex-direction:column;min-width:0}
+.chat{flex:1;overflow:auto;padding:26px 28px}
+.msg{max-width:820px;margin:0 auto 18px}
+.msg.user .bubble{background:linear-gradient(135deg,rgba(79,140,255,.18),rgba(79,140,255,.08));border:1px solid rgba(79,140,255,.35);border-radius:16px 16px 4px 16px;padding:12px 16px;font-size:14px}
+.msg.bot .bubble{background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:12px 16px;font-size:14px}
+.msg .who{font-size:11px;color:var(--dim);margin-bottom:6px}
+.answer{white-space:pre-wrap}
+.cite{display:inline-block;font-size:11px;border:1px dashed rgba(34,211,170,.4);color:var(--accent2);border-radius:8px;padding:4px 10px;margin:6px 6px 0 0}
+.mode{font-size:11px;color:var(--dim);margin-bottom:8px}
+.composer{border-top:1px solid var(--line);padding:12px 18px;background:rgba(7,10,18,.7)}
+.composer-inner{max-width:820px;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+.composer textarea{min-height:44px;flex:1}
+.wide{max-width:1080px}
+.center{text-align:center;color:var(--muted);margin-top:10vh}
+.center h3{font-size:22px;color:var(--text);margin:0 0 6px}
+.center p{font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <h1>Insightbase</h1>
+    <p class="sub">AI Knowledge Base Q&amp;A</p>
+    <button id="reset" class="ghost" style="width:100%">Reset demo docs</button>
+    <h2>Demo Library</h2>
+    <div id="doc-list"></div>
+    <h2>Add knowledge</h2>
+    <textarea id="doc-input" placeholder="Paste a document in any language. The server retrieves relevant chunks and answers from this text."></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button id="add-doc" style="flex:1">Add to library</button>
+    </div>
+    <p class="sub" style="margin-top:10px">No document is uploaded anywhere. It is sent only for the current query in demo mode. In production the knowledge base is server-side.</p>
+  </aside>
+  <main class="main">
+    <div class="chat" id="chat">
+      <div class="center">
+        <h3>Ask your knowledge base</h3>
+        <p>Try: “What is Skill Bridge and how does it deduplicate skills?”</p>
+        <p>Or “Summarize the DSH portfolio system architecture.”</p>
+      </div>
+    </div>
+    <div class="composer">
+      <div class="composer-inner">
+        <textarea id="q" placeholder="Ask anything in English or Chinese…"></textarea>
+        <button id="send">Send</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+var $ = function(id){ return document.getElementById(id); };
+var DEMO_DOCS = [
+  {
+    title: "Skill Bridge Architecture",
+    text: "DSH Skill Bridge indexes three local skill roots: .dsh/skills, .claude/skills and .agents/skills. It scans each directory, parses YAML front matter from SKILL.md files, and deduplicates skills by normalized id. When the same skill name exists in multiple roots, the highest priority source wins and the lower priority copies are marked as shadowed. The current index contains more than 160 discovered skills; 144 are active and 17 are shadowed. It exposes skill_find, skill_read and skill_enable model tools, and registers a Skill Map tab in the better-sidebar UI."
+  },
+  {
+    title: "DSH Portfolio System",
+    text: "The DSH portfolio plugin renders a manifest-driven HTML5 portfolio. Each entry has a cover image, a summary, highlight bullets, and an interactive demo HTML file. The export pipeline copies cover assets into an assets folder and demo pages into a demos folder, then builds a single index.html that works fully offline. Covers are generated as 1200 by 630 PNG images using Microsoft Edge headless mode. The deployed version is served from Vercel as a static site."
+  },
+  {
+    title: "DSH Deploy Plugin",
+    text: "DSH Deploy automates static deployments. For Vercel it shells out to the Vercel CLI with a scoped team, a non-interactive production flag, and a token passed at runtime. For Serv00 it uses a Python script with paramiko to upload files over SFTP after installing paramiko on first use. It exposes deploy_status, deploy_vercel and deploy_serv00 model tools plus an independent dark web console for humans."
+  },
+  {
+    title: "DSH Dev Companion",
+    text: "DSH Dev Companion wraps local capabilities as model-callable tools. It registers tools such as image_gen, video_gen, audio_gen, ppt_create, word_create and tabler_gen through ctx.tools.register. Each tool has a JSON schema for parameters, an output schema, a renderer for chat, and an execute function. A dangerous-command safety gate blocks destructive shell commands before they run."
+  },
+  {
+    title: "DSH LLM Fallbacks",
+    text: "The LLM fallback plugin maintains an ordered provider chain. If the primary model fails or times out, the plugin rotates to the next provider automatically. It exposes a state route and tools for inspecting and editing the provider chain, and the current chain is configured to prefer a pro model and fall back to a flash model."
+  }
+];
+var state = { history: [], docs: DEMO_DOCS.slice(), active: 0, busy: false };
+
+function renderDocs(){
+  var list = $('doc-list');
+  list.innerHTML = '';
+  state.docs.forEach(function(doc, i){
+    var div = document.createElement('div');
+    div.className = 'doc-item' + (i === state.active ? ' active' : '');
+    div.innerHTML = doc.title + '<small>' + doc.text.length + ' chars</small>';
+    div.addEventListener('click', function(){ state.active = i; renderDocs(); });
+    list.appendChild(div);
+  });
+}
+
+function bot(who, html){
+  var chat = $('chat');
+  var div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = '<div class="who">' + who + '</div><div class="bubble">' + html + '</div>';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+function user(text){
+  var chat = $('chat');
+  var div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = '<div class="who">You</div><div class="bubble"></div>';
+  div.querySelector('.bubble').textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addMessage(role, text, docs){
+  var chat = $('chat');
+  var div = document.createElement('div');
+  div.className = 'msg ' + role;
+  var who = role === 'user' ? 'You' : 'Insightbase';
+  var body = '<div class="who">' + who + '</div><div class="bubble">';
+  if (role === 'assistant' && text){
+    body += '<div class="mode">' + (text.mode === 'llm' ? 'LLM + retrieval' : 'Demo mode (retrieval only)') + '</div>';
+    body += '<div class="answer"></div>';
+    body += '<div>' + (text.citations || []).map(function(c){ return '<span class="cite">' + c.title + ' · ' + Math.round(c.score * 100) + '%</span>'; }).join('') + '</div>';
+  } else {
+    body += '<div class="answer"></div>';
+  }
+  body += '</div>';
+  div.innerHTML = body;
+  var ans = div.querySelector('.answer');
+  if (role === 'assistant' && text) ans.textContent = text.answer || 'No answer.';
+  else ans.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+$('send').addEventListener('click', ask);
+$('q').addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); ask(); }
+});
+$('reset').addEventListener('click', function(){
+  state.docs = DEMO_DOCS.slice();
+  state.history = [];
+  $('chat').innerHTML = '<div class="center"><h3>Ask your knowledge base</h3><p>Demo docs reset. Try the suggested questions below.</p></div>';
+  renderDocs();
+});
+$('add-doc').addEventListener('click', function(){
+  var text = $('doc-input').value.trim();
+  if (!text) return;
+  var title = text.slice(0, 42).replace(/\n/g, ' ');
+  state.docs.push({title: title, text: text});
+  state.active = state.docs.length - 1;
+  $('doc-input').value = '';
+  renderDocs();
+});
+
+function ask(){
+  var q = $('q').value.trim();
+  if (!q || state.busy) return;
+  $('q').value = '';
+  state.busy = true;
+  $('send').disabled = true;
+  addMessage('user', q);
+  var pending = addMessage('assistant', {mode: 'demo', answer: 'Searching knowledge base…', citations: []});
+  fetch('/api/chat', {
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body: JSON.stringify({
+      query: q,
+      history: state.history.slice(-6),
+      docs: state.docs.map(function(d){ return {title:d.title, text:d.text}; })
+    })
+  }).then(function(r){ return r.json(); }).then(function(json){
+    pending.remove();
+    if (!json || json.ok !== true){ addMessage('assistant', {mode:'demo', answer: 'Error: ' + (json && json.error ? json.error : 'unknown'), citations: []}); }
+    else {
+      addMessage('assistant', json);
+      state.history.push({role:'user', content:q});
+      state.history.push({role:'assistant', content:json.answer});
+    }
+  }).catch(function(e){
+    pending.remove();
+    addMessage('assistant', {mode:'demo', answer: 'Network error: ' + e.message, citations: []});
+  }).finally(function(){ state.busy = false; $('send').disabled = false; });
+}
+
+renderDocs();
+</script>
+</body>
+</html>
