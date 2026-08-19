@@ -1,0 +1,11 @@
+{
+  "name": "insightbase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Knowledge Base Q&A — retrieval-augmented demo with OpenAI-compatible LLM fallback.",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy . --prod --yes --no-color --non-interactive"
+  }
+}
